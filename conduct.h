@@ -3,11 +3,14 @@
 #include <unistd.h>
 #include <semaphore.h>
 
+/*Structure Conduit */
 struct conduct{
     size_t atomicity;
     size_t capacity;
     char* name;
     char* buff;
+    int fd;
+
 };
 
 struct conduct *conduct_create(const char *name, size_t a, size_t c);
