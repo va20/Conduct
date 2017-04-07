@@ -5,21 +5,19 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
     struct conduct* conduit=NULL;
     int fd;
     if(name!=NULL){
-        fd=open(name,O_CREAT|O_RDWR);
+        fd=open(name,O_CREAT|O_RDWR,0666);
         if(fd==-1){
             perror("Ouverture du fichier a echoue");
             exit(3);
         }
-        conduit=mmap(NULL,sizeof(struct conduct),PROT_READ|PROT_WRITE,MAP_SHARED ,fd, 0);
+
+        ftruncate(fd,sizeof(struct conduct));
+        conduit=mmap(NULL,c,PROT_READ|PROT_WRITE,MAP_SHARED ,fd, 0);
         if(conduit==MAP_FAILED){
             perror("Mapping failed");
             exit(1);
         }
-        conduit->buff=malloc(sizeof(char)*c);
-        if(conduit->buff==NULL){
-            perror("Allocation dynamique buff a echoue");
-            exit(2);
-        }
+
         conduit->capacity=c;
         conduit->atomicity=a;
         conduit->fd=fd;
