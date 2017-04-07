@@ -37,7 +37,7 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
 
 /*Ouverture d'un conduit nommé */
 struct conduct * conduct_open(const char *name){
-  struct conduct * conduct;
+  struct conduct * conduit;
   struct stat file;
   int fd=open(name,O_RDWR);
 
@@ -50,12 +50,11 @@ struct conduct * conduct_open(const char *name){
     perror("Problem with fstat");
   };
 
-  conduct=mmap(NULL,file.st_size,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
-  if(conduct==MAP_FAILED){
+  conduit=mmap(NULL,file.st_size,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
+  if(conduit==MAP_FAILED){
     perror("MMAP FAILED");
     exit(1);
   }
-
-
+  return conduit;
 
 }
