@@ -2,6 +2,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <sys/mman.h>
+#include <error.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+
 
 /*Structure Conduit */
 struct conduct{
@@ -10,7 +15,6 @@ struct conduct{
     char* name;
     char* buff;
     int fd;
-
 };
 
 struct conduct *conduct_create(const char *name, size_t a, size_t c);
