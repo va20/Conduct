@@ -11,10 +11,13 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
             exit(3);
         }
         conduit=mmap(NULL,sizeof(struct conduct),PROT_READ|PROT_WRITE,MAP_SHARED ,fd, 0);
+        printf("mmap reussi\n");
         if(conduit==MAP_FAILED){
             perror("Mapping failed");
             exit(1);
         }
+        printf("mmap reussi\n");
+
         conduit->buff=malloc(sizeof(char)*c);
         if(conduit->buff==NULL){
             perror("Allocation dynamique buff a echoue");
