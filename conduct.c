@@ -10,13 +10,12 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
             perror("Ouverture du fichier a echoue");
             exit(3);
         }
-        ftruncate(fd,sizeof(struct conduct));
+        ftruncate(fd,c);
         conduit=mmap(NULL,c,PROT_READ|PROT_WRITE,MAP_SHARED ,fd, 0);
         if(conduit==MAP_FAILED){
             perror("Mapping failed");
             exit(1);
         }
-
         conduit->capacity=c;
         conduit->atomicity=a;
         conduit->fd=fd;
