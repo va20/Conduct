@@ -3,10 +3,12 @@
 #include <unistd.h>
 #include <semaphore.h>
 #include <sys/mman.h>
-#include <error.h>
 #include <sys/file.h>
 #include <sys/stat.h>
-
+#include <sys/types.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 
 /*Structure Conduit */
 struct conduct{
