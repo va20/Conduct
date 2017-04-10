@@ -32,7 +32,6 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
             exit(1);
         }
     }
-    printf("%p\n",conduit);
     return conduit;
 
   }
@@ -60,15 +59,8 @@ struct conduct * conduct_open(const char *name){
     perror("MMAP FAILED");
     exit(1);
   }
-  printf("open :%d\n",conduit->fd);
 
   conduit->fd=fc2;
-  printf("open :%d\n",fc2);
-
-  printf("capacity:%d\n",conduit->capacity );
-  printf("atomicity:%d\n",conduit->atomicity );
-
-  printf("%p\n",conduit);
 
 
   return conduit;
