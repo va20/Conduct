@@ -18,6 +18,7 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
         }
         conduit->capacity=c;
         conduit->atomicity=a;
+        conduit->buff=malloc(sizeof(char)*conduit->capacity);
         conduit->fd=fd;
     }
     else if(name==NULL){
@@ -27,8 +28,8 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
             exit(1);
         }
     }
+    close(conduit->fd);
     return conduit;
-
   }
 
 
@@ -54,5 +55,4 @@ struct conduct * conduct_open(const char *name){
     exit(1);
   }
   return conduit;
-
 }
