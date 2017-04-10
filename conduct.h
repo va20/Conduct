@@ -15,8 +15,9 @@ struct conduct{
     size_t atomicity; // n > a :pas de garatie qu'on va ecrire n octets parce quéon a demandé plus de a
                     // n <= a  : ecriture avec garantie que l'ecriture soit contigue
     size_t capacity;// borne maximale du buff
-    char* name;
     char* buff;
+    sem_t lecture;
+    sem_t ecriture;
     int fd;
 };
 

@@ -4,7 +4,6 @@
 struct conduct *conduct_create(const char *name,size_t c,size_t a){
     struct conduct* conduit=NULL;
     int fc1;
-    int fc3;
     if(name!=NULL){
         fc1=open(name,O_CREAT|O_RDWR,0666);
 
