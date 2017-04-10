@@ -3,22 +3,28 @@
 
 struct conduct *conduct_create(const char *name,size_t c,size_t a){
     struct conduct* conduit=NULL;
-    int fd;
+    int fc1;
+    int fc3;
     if(name!=NULL){
-        fd=open(name,O_CREAT|O_RDWR,0666);
-        if(fd==-1){
+        fc1=open(name,O_CREAT|O_RDWR,0666);
+
+        if(fc1==-1){
             perror("Ouverture du fichier a echoue");
             exit(3);
         }
-        ftruncate(fd,c);
-        conduit=mmap(NULL,c,PROT_READ|PROT_WRITE,MAP_SHARED ,fd, 0);
+        if(ftruncate(fc1,c)==1){
+          perror("ftruncate failed");
+          exit(2);
+        }
+        conduit=mmap(NULL,c,PROT_READ|PROT_WRITE,MAP_PRIVATE ,fc1, 0);
         if(conduit==MAP_FAILED){
             perror("Mapping failed");
             exit(1);
         }
+
         conduit->capacity=c;
         conduit->atomicity=a;
-        conduit->fd=fd;
+        conduit->fd=fc1;
     }
     else if(name==NULL){
         conduit=mmap(NULL,sizeof(struct conduct),PROT_READ|PROT_WRITE,MAP_SHARED|MAP_ANONYMOUS,-1, 0);
@@ -27,6 +33,7 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
             exit(1);
         }
     }
+    printf("%p\n",conduit);
     return conduit;
 
   }
@@ -37,22 +44,34 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
 struct conduct * conduct_open(const char *name){
   struct conduct * conduit;
   struct stat file;
-  int fd=open(name,O_RDWR);
+  int fc2=open(name,O_RDWR);
 
-  if(fd<0){
+
+  if(fc2<0){
     perror("File doesn't open");
     exit(0);
     }
 
-  if(fstat(fd,&file)==-1){
+  if(fstat(fc2,&file)==-1){
     perror("Problem with fstat");
   }
 
-  conduit=mmap(NULL,file.st_size,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
+  conduit=mmap(NULL,file.st_size,PROT_READ|PROT_WRITE,MAP_SHARED,fc2,0);
   if(conduit==MAP_FAILED){
     perror("MMAP FAILED");
     exit(1);
   }
+  printf("open :%d\n",conduit->fd);
+
+  conduit->fd=fc2;
+  printf("open :%d\n",fc2);
+
+  printf("capacity:%d\n",conduit->capacity );
+  printf("atomicity:%d\n",conduit->atomicity );
+
+  printf("%p\n",conduit);
+
+
   return conduit;
 
 }
