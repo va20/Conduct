@@ -15,7 +15,7 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
           perror("ftruncate failed");
           exit(2);
         }
-        conduit=mmap(NULL,c,PROT_READ|PROT_WRITE,MAP_PRIVATE ,fc1, 0);
+        conduit=mmap(NULL,c,PROT_READ|PROT_WRITE,MAP_SHARED,fc1, 0);
         if(conduit==MAP_FAILED){
             perror("Mapping failed");
             exit(1);
@@ -23,6 +23,7 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
 
         conduit->capacity=c;
         conduit->atomicity=a;
+        conduit->buff=malloc(sizeof(char)*conduit->capacity);
         conduit->fd=fc1;
     }
     else if(name==NULL){
@@ -33,7 +34,6 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
         }
     }
     return conduit;
-
   }
 
 
@@ -43,7 +43,6 @@ struct conduct * conduct_open(const char *name){
   struct conduct * conduit;
   struct stat file;
   int fc2=open(name,O_RDWR);
-
 
   if(fc2<0){
     perror("File doesn't open");
@@ -61,8 +60,11 @@ struct conduct * conduct_open(const char *name){
   }
 
   conduit->fd=fc2;
-
-
   return conduit;
 
+}
+
+ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
+  
+  return 0;
 }
