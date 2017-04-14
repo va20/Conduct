@@ -15,7 +15,7 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
           perror("ftruncate failed");
           exit(2);
         }
-        conduit=mmap(NULL,c,PROT_READ|PROT_WRITE,MAP_PRIVATE ,fc1, 0);
+        conduit=mmap(NULL,c,PROT_READ|PROT_WRITE,MAP_SHARED ,fc1, 0);
         if(conduit==MAP_FAILED){
             perror("Mapping failed");
             exit(1);
@@ -23,7 +23,14 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
 
         conduit->capacity=c;
         conduit->atomicity=a;
-        conduit->fd=fc1;
+        if(sem_init(&conduit->ecriture,1,1) ==-1){
+          perror("Initialisation Sempahore écriture Failed \n");
+        }
+        if(sem_init(&conduit->lecture,1,0)==-1){
+          perror("Initialisation Semaphore lecture Failed \n");
+        }
+        conduit->buff=malloc(conduit->capacity*sizeof(char));
+
     }
     else if(name==NULL){
         conduit=mmap(NULL,sizeof(struct conduct),PROT_READ|PROT_WRITE,MAP_SHARED|MAP_ANONYMOUS,-1, 0);
@@ -60,9 +67,27 @@ struct conduct * conduct_open(const char *name){
     exit(1);
   }
 
-  conduit->fd=fc2;
 
 
   return conduit;
 
 }
+
+/*Fonction d'écriture dans le conduit */
+ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
+    if(strlen(c->buff)==c->capacity){
+
+
+    }
+    if(strlen(c->buff)<c->capacity ){
+      int s=sprintf(c->buff, buf);
+      if(s==-1){
+        perror("Writting Failed");
+      }
+      return s;
+      
+    }
+
+
+
+};

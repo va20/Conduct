@@ -6,6 +6,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/wait.h>
@@ -18,7 +19,7 @@ struct conduct{
     char* buff;
     sem_t lecture;
     sem_t ecriture;
-    int fd;
+
 };
 
 struct conduct *conduct_create(const char *name, size_t a, size_t c);
