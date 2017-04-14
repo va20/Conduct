@@ -9,6 +9,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <string.h>
+#include "pthread.h"
+
 
 /*Structure Conduit */
 struct conduct{
@@ -16,9 +19,15 @@ struct conduct{
                     // n <= a  : ecriture avec garantie que l'ecriture soit contigue
     size_t capacity;// borne maximale du buff
     char* buff;
-    sem_t lecture;
-    sem_t ecriture;
+	int eof;
     int fd;
+    pthread_mutex_t *verrou_buff;
+    pthread_cond_t *cond_ecrivain;
+    pthread_cond_t *cond_lecteur;
+    size_t place_restant;
+    int curseur_ecriture;
+    int curseur_lecture;
+
 };
 
 struct conduct *conduct_create(const char *name, size_t a, size_t c);

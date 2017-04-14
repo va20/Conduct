@@ -11,7 +11,7 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
             perror("Ouverture du fichier a echoue");
             exit(3);
         }
-        if(ftruncate(fc1,c)==1){
+        if(ftruncate(fc1,c)==-1){
           perror("ftruncate failed");
           exit(2);
         }
@@ -25,6 +25,26 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
         conduit->atomicity=a;
         conduit->buff=malloc(sizeof(char)*conduit->capacity);
         conduit->fd=fc1;
+		    conduit->eof=0;
+        conduit->place_restant=conduit->capacity;
+        conduit->curseur_ecriture=0;
+        conduit->curseur_lecture=0;
+
+        pthread_mutex_t verrou;
+        pthread_mutex_init(&verrou, NULL);
+        conduit->verrou_buff=&verrou;
+
+        pthread_cond_t cond_ecr;
+	      pthread_cond_init(&cond_ecr,NULL);
+	      pthread_cond_t cond_lec;
+	      pthread_cond_init(&cond_lec,NULL);
+
+        conduit->cond_ecrivain=&cond_ecr;
+        conduit->cond_lecteur=&cond_lec;
+
+
+
+
     }
     else if(name==NULL){
         conduit=mmap(NULL,sizeof(struct conduct),PROT_READ|PROT_WRITE,MAP_SHARED|MAP_ANONYMOUS,-1, 0);
@@ -65,6 +85,32 @@ struct conduct * conduct_open(const char *name){
 }
 
 ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
-  
+  ssize_t lu;
+  if(strlen(c->buff)==0){
+
+  }
+  else if(strlen(c->buff)>0){
+    if(count<=strlen(c->buff)){
+      lu=read(c->fd,buff,count);
+      if(lu==-1){
+        perror("Conduct reading failed : ");
+        return -1;
+      }
+      return count;
+    }
+    else if(count > strlen(c->buff)){
+      lu=read(c->fd,buff,count);
+      if(lu==-1){
+        perror("Conduct reading failed : ");
+        return -1;
+      }
+      return lu;
+    }
+  }
+  return 0;
+}
+
+int conduct_write_eof(struct conduct *c){
+  c->eof=1;
   return 0;
 }
