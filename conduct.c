@@ -24,7 +24,6 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
         conduit->capacity=c;
         conduit->atomicity=a;
         conduit->buff=malloc(sizeof(char)*conduit->capacity);
-        conduit->fd=fc1;
 		    conduit->eof=0;
         conduit->place_restant=conduit->capacity;
         conduit->curseur_ecriture=0;
@@ -41,9 +40,6 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
 
         conduit->cond_ecrivain=&cond_ecr;
         conduit->cond_lecteur=&cond_lec;
-
-
-
 
     }
     else if(name==NULL){
@@ -79,7 +75,6 @@ struct conduct * conduct_open(const char *name){
     exit(1);
   }
 
-  conduit->fd=fc2;
   return conduit;
 
 }
@@ -91,7 +86,7 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
   }
   else if(strlen(c->buff)>0){
     if(count<=strlen(c->buff)){
-      lu=read(c->fd,buff,count);
+      //lu=read(c->fd,buff,count);
       if(lu==-1){
         perror("Conduct reading failed : ");
         return -1;
@@ -99,7 +94,7 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
       return count;
     }
     else if(count > strlen(c->buff)){
-      lu=read(c->fd,buff,count);
+      //lu=read(c->fd,buff,count);
       if(lu==-1){
         perror("Conduct reading failed : ");
         return -1;
@@ -114,3 +109,22 @@ int conduct_write_eof(struct conduct *c){
   c->eof=1;
   return 0;
 }
+
+/*Fonction d'écriture dans le conduit */
+ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
+    if(strlen(c->buff)==c->capacity){
+
+
+    }
+    if(strlen(c->buff)<c->capacity ){
+      int s=sprintf(c->buff, buf);
+      if(s==-1){
+        perror("Writting Failed");
+      }
+      return s;
+
+    }
+
+
+
+};

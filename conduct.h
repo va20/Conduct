@@ -6,6 +6,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/wait.h>
@@ -20,13 +21,15 @@ struct conduct{
     size_t capacity;// borne maximale du buff
     char* buff;
 	int eof;
-    int fd;
     pthread_mutex_t *verrou_buff;
     pthread_cond_t *cond_ecrivain;
     pthread_cond_t *cond_lecteur;
     size_t place_restant;
     int curseur_ecriture;
     int curseur_lecture;
+    sem_t lecture;
+    sem_t ecriture;
+
 
 };
 
