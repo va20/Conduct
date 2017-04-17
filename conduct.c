@@ -200,6 +200,7 @@ void conduct_destroy(struct conduct *c){
 
 /*Fonction d'écriture dans le conduit */
 ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
+    ssize_t octets_ecrits;
 
     pthread_mutex_lock(c->verrou_buff);
 
@@ -226,10 +227,14 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
                 };
               }
               memcpy(c->buff+strlen(c->buff), buf, count);
+              octets_ecrits=(ssize_t) count;
+              return octets_ecrits;
             }
 
         /*Ecriture non atomique*/
           memcpy(c->buff+strlen(c->buff), buf,c->capacity-strlen(c->buff));
+          octets_ecrits=(ssize_t)c->capacity-strlen(c->buff);
+          return octets_ecrits;
     }
 
     /*Il y a de la place */
@@ -243,8 +248,12 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
             }
           }
           memcpy(c->buff+strlen(c->buff), buf, count);
+          octets_ecrits=(ssize_t) count;
+          return octets_ecrits;
         }
 
     /*Ecriture non atomique*/
       memcpy(c->buff+strlen(c->buff), buf,c->capacity-strlen(c->buff));
+      octets_ecrits=(ssize_t)c->capacity-strlen(c->buff);
+      return octets_ecrits;
   }
