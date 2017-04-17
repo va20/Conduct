@@ -23,12 +23,15 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
 
         conduit->capacity=c;
         conduit->atomicity=a;
-        conduit->buff=malloc(conduit->capacity*sizeof(char));
+        //conduit->buff=malloc(conduit->capacity*sizeof(char));
+        conduit->buff[conduit->capacity];
+        memset(conduit->buff,0,sizeof(char)*conduit->capacity);
         conduit->name=malloc(strlen(name)*sizeof(char));
         if(strcpy(conduit->name, name)==NULL){
           printf("Error copy name\n");
           exit(6);
         }
+
 		    conduit->eof=0;
         conduit->curseur_ecriture=0;
         conduit->curseur_lecture=0;
@@ -61,9 +64,9 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
 /*Ouverture d'un conduit nommé */
 struct conduct * conduct_open(const char *name){
   struct conduct * conduit;
+
   struct stat file;
   int fc2=open(name,O_RDWR);
-
   if(fc2<0){
     perror("File doesn't open");
     exit(0);
@@ -78,7 +81,6 @@ struct conduct * conduct_open(const char *name){
     perror("MMAP FAILED");
     exit(1);
   }
-
   return conduit;
 
 }
@@ -106,6 +108,9 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
       if(count+c->curseur_lecture <= c->capacity){
         //copier les octets demandes par le lecteur dans buff
         buff=memcpy(buff,c->buff+c->curseur_lecture,count);
+        printf("j'ai lu %s\n",buff);
+        printf("taille buffer conduit %ld\n",strlen(c->buff));
+
         //buff[strlen(buff)-1]='\0';
         if(buff==NULL){
           printf("Conduct reading failed\n");
@@ -115,7 +120,6 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
         memmove(c->buff+c->curseur_lecture, c->buff+count, strlen(c->buff));
         printf("buffer conduit %s\n",c->buff);
         lu=strlen(buff);
-        printf("j'ai lu %s\n",buff);
         // reveiller les ecrivains pour qu'ils puissent ecrire (s'il y a des ecrivains qui attendent)
         pthread_cond_broadcast(c->cond_ecrivain);
         return lu;
@@ -138,6 +142,7 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
         char tab[tmp];
         // copier la 2eme partie lue dans un buffer temporaire
         memcpy(tab, c->buff+c->curseur_lecture,tmp);
+        printf("j'ai lu %s\n",buff);
         // concatener les 2 buffers
         if(strcat(buff, tab)==NULL){
           printf("Error concatenation \n");
@@ -145,7 +150,6 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
         }
         // effacer la 2eme partie lue
         memmove(c->buff+c->curseur_lecture, c->buff+(tmp+1), strlen(c->buff)-tmp);
-        printf("j'ai lu %s\n",buff);
         // Reveiller les ecrivains qui attendent pour ecrire (s'ils existent)
         pthread_cond_broadcast(c->cond_ecrivain);
         return count;
@@ -156,7 +160,8 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
       // calculer le nombre d'octets restans dans le buffer du conduit
       int n=strlen(c->buff)-c->curseur_lecture;
       // copier les octets lus dans le buffer du lecteur
-      buff=memcpy(buff,c->buff+c->curseur_lecture,n+1);
+      buff=memcpy(buff,c->buff+c->curseur_lecture,n);
+      printf("j'ai lu %s\n",buff);
       printf("n %d\n",n );
       if(buff==NULL){
         printf("Conduct reading failed\n");
@@ -168,7 +173,6 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
       printf("taille buffer conduit %ld\n",strlen(c->buff));
 
       lu=strlen(buff);
-      printf("j'ai lu %s\n",buff);
       // Reveiller les ecrivains qui attendent pour ecrire (s'ils existent)
       pthread_cond_broadcast(c->cond_ecrivain);
       return lu;
@@ -212,9 +216,10 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
     ssize_t octets_ecrits;
 
     pthread_mutex_lock(c->verrou_buff);
-
+    printf("here\n");
     /*Conduit plein*/
     if(strlen(c->buff)==c->capacity){
+      printf("here\n");
 
         /*Je reveille les lecteurs pour qu'ils me libèrent de la place */
         if(pthread_cond_broadcast(c->cond_lecteur)==-1){
@@ -249,7 +254,10 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
     /*Il y a de la place */
 
     /*Ecriture atomique*/
+    printf("here\n");
+
     if(count<=c->atomicity){
+      printf("here place ecriture\n");
       while(count>c->capacity-strlen(c->buff)){
           if(pthread_cond_wait(c->cond_ecrivain,c->verrou_buff)==-1){
               perror("Wait doesn't work");
