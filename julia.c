@@ -19,14 +19,14 @@ double scale = 1024 / 4.0;
 int dx, dy;
 complex double julia_c;
 
-/* La structure qui contient une requête du programme principal. */
+/* La structure qui contient une requĆŖte du programme principal. */
 
 struct julia_request {
     short int x, y;
     short int count;
 };
 
-/* La réponse d'un travailleur. */
+/* La rĆ©ponse d'un travailleur. */
 
 struct julia_reply {
     short int x, y;
@@ -38,7 +38,7 @@ struct twocons {
     struct conduct *one, *two;
 };
 
-/* La fenêtre principale. */
+/* La fenĆŖtre principale. */
 
 GtkWidget* window;
 
@@ -55,7 +55,7 @@ julia(double complex z, double complex c)
     return i;
 }
 
-/* Associe à une paire de coordonnées un point du plan complexe. */
+/* Associe Ć  une paire de coordonnĆ©es un point du plan complexe. */
 
 static double complex
 toc(int x, int y)
@@ -99,7 +99,7 @@ julia_thread(void *arg)
     }
 }
 
-/* Convertit un nombre d'itérations en une couleur, en format RGB24. */
+/* Convertit un nombre d'itĆ©rations en une couleur, en format RGB24. */
 
 static unsigned int
 torgb(int n)
@@ -133,8 +133,8 @@ torgb(int n)
     return r << 16 | g << 8 | b;
 }
 
-/* Lit les réponses du travailleur et les met à l'écran.
-   repcount est le nombre de réponses à lire. */
+/* Lit les rĆ©ponses du travailleur et les met Ć  l'Ć©cran.
+   repcount est le nombre de rĆ©ponses Ć  lire. */
 
 static void
 paintit(struct twocons *cons, cairo_t *cr, int repcount)
@@ -152,7 +152,7 @@ paintit(struct twocons *cons, cairo_t *cr, int repcount)
             return;
         }
         /* Avec les toolkits modernes, on ne peut plus travailler pixel par
-           pixel.  Pas grave, on va travailler en mémoire principale. */
+           pixel.  Pas grave, on va travailler en mĆ©moire principale. */
         surface = cairo_image_surface_create(CAIRO_FORMAT_RGB24, rep.count, 1);
         data = (unsigned*)cairo_image_surface_get_data(surface);
         for(int j = 0; j < rep.count; j++) {
@@ -195,13 +195,13 @@ draw_callback (GtkWidget *widget, cairo_t *cr, gpointer data)
             rc = conduct_write(cons->one, &req, sizeof(req));
             if(rc <= 0) {
                 perror("conduct_write");
-                /* Pas de bonne façon de gérer l'erreur sans deadlock. */
+                /* Pas de bonne faĆ§on de gĆ©rer l'erreur sans deadlock. */
                 continue;
             }
             repcount++;
             if(repcount >= QSIZE) {
                 /* Un conduit bloque lorsqu'il est plein.  Il faut donc
-                   vider les conduits à temps pour éviter un deadlock. */
+                   vider les conduits Ć  temps pour Ć©viter un deadlock. */
                 paintit(cons, cr, repcount);
                 repcount = 0;
             }
@@ -312,7 +312,7 @@ int main(int argc, char **argv)
             perror("pthread_create");
             exit(1);
         }
-        /* On se synchronise à l'aide des conduits, pas besoin de join. */
+        /* On se synchronise Ć  l'aide des conduits, pas besoin de join. */
         pthread_detach(t);
     }
 

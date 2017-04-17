@@ -202,6 +202,7 @@ void conduct_destroy(struct conduct *c){
 ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
     ssize_t octets_ecrits;
 
+
     pthread_mutex_lock(c->verrou_buff);
 
     /*Conduit plein*/
@@ -253,7 +254,7 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
         }
 
     /*Ecriture non atomique*/
+      octets_ecrits=c->capacity-strlen(c->buff);
       memcpy(c->buff+strlen(c->buff), buf,c->capacity-strlen(c->buff));
-      octets_ecrits=(ssize_t)c->capacity-strlen(c->buff);
       return octets_ecrits;
   }
