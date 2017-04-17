@@ -112,6 +112,29 @@ int conduct_write_eof(struct conduct *c){
 
 /*Fonction d'écriture dans le conduit */
 ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
+
+    pthread_mutex_lock(&verrou);
+    /*Conduit plein*/
+    if(strlen(c->buff)==c->capacity){
+        if(pthread_cond_broadcast(c->cond_lecteur)==-1){
+          perror("Broadcast doesn't work");
+          return -1;
+        };
+        if(pthread_cond_wait(c->cond_ecrivain,c->verrou_buff)==-1){
+          perror("Wait doesn't work");
+          return -1;
+        };
+    }
+    /*Il y a de la place */
+    if(count<=c->atomicity){
+          while(c->place_restante-count<0){
+
+          }
+        }
+    }
+    if()
+
+
     if(strlen(c->buff)==c->capacity){
 
 
