@@ -92,7 +92,6 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
   // 1) le buffer ne soit plus vide
   // 2) une marque de fin de fichier soit y insérée
   while(strlen(c->buff)==0 && c->eof==0){
-    printf("here\n");
 
     // Reveiller les ecrivains qui attendent pour ecrire (s'ils existent)
     pthread_cond_broadcast(c->cond_ecrivain);
@@ -107,12 +106,14 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
       if(count+c->curseur_lecture <= c->capacity){
         //copier les octets demandes par le lecteur dans buff
         buff=memcpy(buff,c->buff+c->curseur_lecture,count);
+        //buff[strlen(buff)-1]='\0';
         if(buff==NULL){
           printf("Conduct reading failed\n");
           return -1;
         }
         // effacer les octets lus du buffer de conduit
-        memmove(c->buff+c->curseur_lecture, c->buff+(count+1), strlen(c->buff)-count);
+        memmove(c->buff+c->curseur_lecture, c->buff+count, strlen(c->buff));
+        printf("buffer conduit %s\n",c->buff);
         lu=strlen(buff);
         printf("j'ai lu %s\n",buff);
         // reveiller les ecrivains pour qu'ils puissent ecrire (s'il y a des ecrivains qui attendent)
@@ -155,13 +156,17 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
       // calculer le nombre d'octets restans dans le buffer du conduit
       int n=strlen(c->buff)-c->curseur_lecture;
       // copier les octets lus dans le buffer du lecteur
-      buff=memcpy(buff,c->buff+c->curseur_lecture,n);
+      buff=memcpy(buff,c->buff+c->curseur_lecture,n+1);
+      printf("n %d\n",n );
       if(buff==NULL){
         printf("Conduct reading failed\n");
         return -1;
       }
       // effacer ce que le lecteur a lu
-      memmove(c->buff+c->curseur_lecture, c->buff+n, strlen(c->buff)-n);
+      memmove(c->buff+c->curseur_lecture, c->buff+n,n);
+      printf("buffer conduit %s\n",c->buff);
+      printf("taille buffer conduit %ld\n",strlen(c->buff));
+
       lu=strlen(buff);
       printf("j'ai lu %s\n",buff);
       // Reveiller les ecrivains qui attendent pour ecrire (s'ils existent)
