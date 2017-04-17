@@ -25,7 +25,10 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
         conduit->atomicity=a;
         conduit->buff=malloc(conduit->capacity*sizeof(char));
         conduit->name=malloc(strlen(name)*sizeof(char));
-        strcpy(conduit->name, name);
+        if(strcpy(conduit->name, name)==NULL){
+          printf("Error copy name\n");
+          exit(6);
+        }
 		    conduit->eof=0;
         conduit->curseur_ecriture=0;
         conduit->curseur_lecture=0;
@@ -88,8 +91,9 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
   //si le buffer est vide et sans marque de fin de fichier -> la fonction bloque jusqu'à ce que:
   // 1) le buffer ne soit plus vide
   // 2) une marque de fin de fichier soit y insérée
-
   while(strlen(c->buff)==0 && c->eof==0){
+    printf("here\n");
+
     // Reveiller les ecrivains qui attendent pour ecrire (s'ils existent)
     pthread_cond_broadcast(c->cond_ecrivain);
     // Bloquer jusqu'à ce que : le buffer ne soit plus vide ou une marque de fin de fichier soit y insérée
