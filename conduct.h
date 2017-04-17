@@ -24,7 +24,6 @@ struct conduct{
     pthread_mutex_t *verrou_buff;
     pthread_cond_t *cond_ecrivain;
     pthread_cond_t *cond_lecteur;
-    size_t place_restante;
     int curseur_ecriture;
     int curseur_lecture;
     sem_t lecture;

@@ -25,7 +25,6 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
         conduit->atomicity=a;
         conduit->buff=malloc(sizeof(char)*conduit->capacity);
 		    conduit->eof=0;
-        conduit->place_restant=conduit->capacity;
         conduit->curseur_ecriture=0;
         conduit->curseur_lecture=0;
 
@@ -113,9 +112,12 @@ int conduct_write_eof(struct conduct *c){
 /*Fonction d'écriture dans le conduit */
 ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
 
-    pthread_mutex_lock(&verrou);
+    pthread_mutex_lock(c->verrou_buff);
+
     /*Conduit plein*/
     if(strlen(c->buff)==c->capacity){
+
+        /*Je reveille les lecteurs pour qu'ils me libèrent de la place */
         if(pthread_cond_broadcast(c->cond_lecteur)==-1){
           perror("Broadcast doesn't work");
           return -1;
@@ -124,30 +126,36 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
           perror("Wait doesn't work");
           return -1;
         };
+
+        /*Les Lecteurs m'ont réveillé , il y a de la place dispo */
+        /*Ecriture atomique*/
+        if(count<=c->atomicity){
+            while(c->place_restante-count<0){
+                if(pthread_cond_wait(c->cond_ecrivain,c->verrou_buff)==-1){
+                  perror("Wait doesn't work");
+                  return -1;
+                };
+              }
+              memcpy(c->buff+strlen(c->buff), buf, count);
+            }
+
+        /*Ecriture non atomique*/
+          memcpy(c->buff+strlen(c->buff), buf,c->capacity-strlen(c->buff));
     }
+
     /*Il y a de la place */
+
+    /*Ecriture atomique*/
     if(count<=c->atomicity){
-          while(c->place_restante-count<0){
-
+        while(c->place_restante-count<0){
+            if(pthread_cond_wait(c->cond_ecrivain,c->verrou_buff)==-1){
+              perror("Wait doesn't work");
+              return -1;
+            };
           }
+          memcpy(c->buff+strlen(c->buff), buf, count);
         }
-    }
-    if()
 
-
-    if(strlen(c->buff)==c->capacity){
-
-
-    }
-    if(strlen(c->buff)<c->capacity ){
-      int s=sprintf(c->buff, buf);
-      if(s==-1){
-        perror("Writting Failed");
-      }
-      return s;
-
-    }
-
-
-
-};
+    /*Ecriture non atomique*/
+      memcpy(c->buff+strlen(c->buff), buf,c->capacity-strlen(c->buff));
+  };
