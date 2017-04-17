@@ -11,11 +11,11 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
             perror("Ouverture du fichier a echoue");
             exit(3);
         }
-        if(ftruncate(fc1,c)==-1){
+        if(ftruncate(fc1,sizeof(struct conduct))==-1){
           perror("ftruncate failed");
           exit(2);
         }
-        conduit=mmap(NULL,c,PROT_READ|PROT_WRITE,MAP_SHARED,fc1, 0);
+        conduit=mmap(NULL,sizeof(struct conduct),PROT_READ|PROT_WRITE,MAP_SHARED,fc1, 0);
         if(conduit==MAP_FAILED){
             perror("Mapping failed");
             exit(1);
@@ -23,7 +23,9 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
 
         conduit->capacity=c;
         conduit->atomicity=a;
-        conduit->buff=malloc(sizeof(char)*conduit->capacity);
+        conduit->buff=malloc(conduit->capacity*sizeof(char));
+        conduit->name=malloc(strlen(name)*sizeof(char));
+        strcpy(conduit->name, name);
 		    conduit->eof=0;
         conduit->place_restant=conduit->capacity;
         conduit->curseur_ecriture=0;
@@ -63,7 +65,7 @@ struct conduct * conduct_open(const char *name){
   if(fc2<0){
     perror("File doesn't open");
     exit(0);
-    }
+  }
 
   if(fstat(fc2,&file)==-1){
     perror("Problem with fstat");
@@ -81,33 +83,100 @@ struct conduct * conduct_open(const char *name){
 
 ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
   ssize_t lu;
-  if(strlen(c->buff)==0){
+  pthread_mutex_lock(c->verrou_buff);
 
+  //si le buffer est vide et sans marque de fin de fichier -> la fonction bloque jusqu'à ce que:
+  // 1) le buffer ne soit plus vide
+  // 2) une marque de fin de fichier soit y insérée
+
+  while(strlen(c->buff)==0 && c->eof==0){
+    pthread_cond_broadcast(c->cond_ecrivain);
+    pthread_cond_wait(c->cond_lecteur,c->verrou_buff);
   }
-  else if(strlen(c->buff)>0){
+  // si le buffer n'est pas vide
+  if(strlen(c->buff)>0){
+    // si le nombre d'octets a exraire est inferieur à la taille de la chaine dans le buffer
     if(count<=strlen(c->buff)){
-      //lu=read(c->fd,buff,count);
-      if(lu==-1){
-        perror("Conduct reading failed : ");
-        return -1;
+      // si le cursuer de lecture n'est pas encore arriver à la fin du buffer
+      if(count+c->curseur_lecture <= c->capacity){
+        //copier les octets demandes par le lecteur dans buff
+        buff=memcpy(buff,c->buff+c->curseur_lecture,count);
+        if(buff==NULL){
+          printf("Conduct reading failed\n");
+          return -1;
+        }
+        // effacer les octets lus du buffer de conduit
+        memmove(c->buff+c->curseur_lecture, c->buff+(count+1), strlen(c->buff)-count);
+        lu=strlen(buff);
+        printf("j'ai lu %s\n",buff);
+        // reveiller les ecrivains pour qu'ils puissent ecrire
+        pthread_cond_broadcast(c->cond_ecrivain);
+        return lu;
       }
-      return count;
+      else if(count + c->curseur_lecture > c->capacity){
+        int tmp=count;
+        buff=memcpy(buff,c->buff+c->curseur_lecture,c->capacity - c->curseur_lecture);
+        if(buff==NULL){
+          printf("Conduct reading failed first part\n");
+          return -1;
+        }
+        tmp=tmp - c->curseur_lecture;
+
+        memmove(c->buff+c->curseur_lecture, c->buff+(c->capacity-c->curseur_lecture), strlen(c->buff)-(c->capacity-c->curseur_lecture));
+        c->curseur_lecture=0;
+        char tab[tmp];
+        memcpy(tab, c->buff+c->curseur_lecture,tmp);
+
+        if(strcat(buff, tab)==NULL){
+          printf("Error concatenation \n");
+          return -1;
+        }
+        memmove(c->buff+c->curseur_lecture, c->buff+(tmp+1), strlen(c->buff)-tmp);
+        printf("j'ai lu %s\n",buff);
+        pthread_cond_broadcast(c->cond_ecrivain);
+        return count;
+      }
     }
     else if(count > strlen(c->buff)){
-      //lu=read(c->fd,buff,count);
-      if(lu==-1){
-        perror("Conduct reading failed : ");
+      int n=strlen(c->buff)-c->curseur_lecture;
+      buff=memcpy(buff,c->buff+c->curseur_lecture,n);
+      if(buff==NULL){
+        printf("Conduct reading failed\n");
         return -1;
       }
+      memmove(c->buff+c->curseur_lecture, c->buff+n, strlen(c->buff)-n);
+      lu=strlen(buff);
+      printf("j'ai lu %s\n",buff);
+      pthread_cond_broadcast(c->cond_ecrivain);
       return lu;
     }
   }
+  pthread_mutex_unlock(c->verrou_buff);
   return 0;
 }
 
+
 int conduct_write_eof(struct conduct *c){
   c->eof=1;
+  pthread_cond_broadcast(c->cond_lecteur);
   return 0;
+}
+
+void conduct_close(struct conduct *c){
+  int res=munmap(c,sizeof(struct conduct));
+  if(res==-1){
+    perror("Deleting failed: ");
+    exit(3);
+  }
+}
+
+void conduct_destroy(struct conduct *c){
+  int res=unlink(c->name);
+  conduct_close(c);
+  if(res==-1){
+    perror("File deleting failed : ");
+    exit(4);
+  }
 }
 
 /*Fonction d'écriture dans le conduit */
@@ -127,4 +196,4 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
 
 
 
-};
+}

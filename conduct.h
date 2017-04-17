@@ -20,6 +20,7 @@ struct conduct{
                     // n <= a  : ecriture avec garantie que l'ecriture soit contigue
     size_t capacity;// borne maximale du buff
     char* buff;
+    char* name;
 	int eof;
     pthread_mutex_t *verrou_buff;
     pthread_cond_t *cond_ecrivain;
