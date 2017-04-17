@@ -11,7 +11,6 @@ int main(int argc, char const *argv[]) {
     printf("eof %d\n",cond1->eof);
     printf("cond ecri %p\n",cond1->cond_ecrivain);
     printf("cond lec %p\n",cond1->cond_lecteur);
-    printf("place dispo %ld\n",cond1->place_restant);
     printf("verrou %p\n",cond1->verrou_buff);
     printf("name %s \n",cond1->name);
     cond2=conduct_open("saif");
