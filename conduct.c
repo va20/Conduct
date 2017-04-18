@@ -99,8 +99,10 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
     pthread_cond_broadcast(c->cond_ecrivain);
     // Bloquer jusqu'à ce que : le buffer ne soit plus vide ou une marque de fin de fichier soit y insérée
     pthread_cond_wait(c->cond_lecteur,c->verrou_buff);
+
   }
   // si le buffer n'est pas vide
+
   if(strlen(c->buff)>0){
     // si le nombre d'octets a exraire est inferieur à la taille de la chaine dans le buffer :
     if(count<=strlen(c->buff)){

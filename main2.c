@@ -7,7 +7,7 @@ int main(int argc, char const *argv[]) {
     char tab[20]={'\0'};
     //strcpy(tab,"salutation");
     printf("atom %s\n",cond1->buff);
-    printf("atom %s\n",cond1->capacity);
+    printf("atom %ld\n",cond1->capacity);
 
     ssize_t rep=conduct_write(cond1, tab, 8);
     //printf("write 1 %ld\n",rep);
