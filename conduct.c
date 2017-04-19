@@ -47,15 +47,34 @@ struct conduct *conduct_create(const char *name,size_t c,size_t a){
 
         conduit->cond_ecrivain=&cond_ecr;
         conduit->cond_lecteur=&cond_lec;
+        return conduit;
+    }
 
+    conduit=mmap(NULL,sizeof(struct conduct),PROT_READ|PROT_WRITE,MAP_SHARED|MAP_ANONYMOUS,-1, 0);
+    if(conduit==MAP_FAILED){
+      perror("Mapping failed");
+      exit(1);
     }
-    else if(name==NULL){
-        conduit=mmap(NULL,sizeof(struct conduct),PROT_READ|PROT_WRITE,MAP_SHARED|MAP_ANONYMOUS,-1, 0);
-        if(conduit==MAP_FAILED){
-            perror("Mapping failed");
-            exit(1);
-        }
-    }
+    conduit->capacity=c;
+    conduit->atomicity=a;
+    //conduit->buff=malloc(conduit->capacity*sizeof(char));
+    conduit->buff[conduit->capacity];
+    memset(conduit->buff,0,sizeof(char)*conduit->capacity);
+
+		conduit->eof=0;
+    conduit->curseur_ecriture=0;
+    conduit->curseur_lecture=0;
+    //pthread_mutex_t verrou;
+    conduit->verrou_buff=malloc(sizeof(pthread_mutex_t));
+
+    conduit->cond_ecrivain=malloc(sizeof(pthread_cond_t));
+    conduit->cond_lecteur=malloc(sizeof(pthread_cond_t));
+
+    pthread_mutex_init(conduit->verrou_buff, NULL);
+	  pthread_cond_init(conduit->cond_ecrivain,NULL);
+	  pthread_cond_init(conduit->cond_lecteur,NULL);
+
+
     return conduit;
   }
 
@@ -86,19 +105,27 @@ struct conduct * conduct_open(const char *name){
 }
 
 ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
+  pthread_mutex_lock(c->verrou_buff);
   ssize_t lu;
   // Prendre le verrou
-  pthread_mutex_lock(c->verrou_buff);
+  printf("ca %ld\n",c->capacity);
+  printf("buff %s\n",c->buff);
+  printf("cond_lec %p\n",c->cond_lecteur);
+  printf("cond_ecri %p\n",c->cond_ecrivain);
+  printf("mutex %p\n",c->verrou_buff);
+
 
   //si le buffer est vide et sans marque de fin de fichier -> la fonction bloque jusqu'à ce que:
   // 1) le buffer ne soit plus vide
   // 2) une marque de fin de fichier soit y insérée
   while(strlen(c->buff)==0 && c->eof==0){
-
+    printf("ok\n");
     // Reveiller les ecrivains qui attendent pour ecrire (s'ils existent)
     pthread_cond_broadcast(c->cond_ecrivain);
+	  printf("ok 2\n");
     // Bloquer jusqu'à ce que : le buffer ne soit plus vide ou une marque de fin de fichier soit y insérée
     pthread_cond_wait(c->cond_lecteur,c->verrou_buff);
+    printf("ok 3\n");
   }
   // si le buffer n'est pas vide
   if(strlen(c->buff)>0){
@@ -107,21 +134,27 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
       // 1) si le cursuer de la lecture n'est pas encore arriver à la fin du buffer
       if(count+c->curseur_lecture <= c->capacity){
         //copier les octets demandes par le lecteur dans buff
-        buff=memcpy(buff,c->buff+c->curseur_lecture,count);
-        printf("j'ai lu %s\n",buff);
         printf("taille buffer conduit %ld\n",strlen(c->buff));
+        printf("buffer conduit avant memmove %s\n",c->buff);
+        buff=memcpy(buff,c->buff+c->curseur_lecture,count);
+        printf("j'ai lu %s\n",(char*)buff);
+
 
         //buff[strlen(buff)-1]='\0';
         if(buff==NULL){
           printf("Conduct reading failed\n");
+          pthread_mutex_unlock(c->verrou_buff);
           return -1;
         }
         // effacer les octets lus du buffer de conduit
         memmove(c->buff+c->curseur_lecture, c->buff+count, strlen(c->buff));
-        printf("buffer conduit %s\n",c->buff);
+        printf("buffer conduit apres memmove %s\n",c->buff);
+        //c->curseur_lecture=c->curseur_lecture+count;
         lu=strlen(buff);
         // reveiller les ecrivains pour qu'ils puissent ecrire (s'il y a des ecrivains qui attendent)
         pthread_cond_broadcast(c->cond_ecrivain);
+        pthread_mutex_unlock(c->verrou_buff);
+
         return lu;
       }
       // 2) si le curseur de la lecture va depasser la capacity(taille du buffer) -> faire 2 lectures
@@ -131,6 +164,7 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
         buff=memcpy(buff,c->buff+c->curseur_lecture,c->capacity - c->curseur_lecture);
         if(buff==NULL){
           printf("Conduct reading failed first part\n");
+          pthread_mutex_unlock(c->verrou_buff);
           return -1;
         }
         // calculer le reste des octets a ajouter dans le buffer de lecture
@@ -142,16 +176,20 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
         char tab[tmp];
         // copier la 2eme partie lue dans un buffer temporaire
         memcpy(tab, c->buff+c->curseur_lecture,tmp);
-        printf("j'ai lu %s\n",buff);
+        printf("j'ai lu %s\n",(char*)buff);
         // concatener les 2 buffers
         if(strcat(buff, tab)==NULL){
           printf("Error concatenation \n");
+          pthread_mutex_unlock(c->verrou_buff);
+
           return -1;
         }
         // effacer la 2eme partie lue
         memmove(c->buff+c->curseur_lecture, c->buff+(tmp+1), strlen(c->buff)-tmp);
         // Reveiller les ecrivains qui attendent pour ecrire (s'ils existent)
         pthread_cond_broadcast(c->cond_ecrivain);
+        pthread_mutex_unlock(c->verrou_buff);
+
         return count;
       }
     }
@@ -161,10 +199,12 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
       int n=strlen(c->buff)-c->curseur_lecture;
       // copier les octets lus dans le buffer du lecteur
       buff=memcpy(buff,c->buff+c->curseur_lecture,n);
-      printf("j'ai lu %s\n",buff);
+      printf("j'ai lu %s\n",(char*)buff);
       printf("n %d\n",n );
       if(buff==NULL){
         printf("Conduct reading failed\n");
+        pthread_mutex_unlock(c->verrou_buff);
+
         return -1;
       }
       // effacer ce que le lecteur a lu
@@ -175,6 +215,8 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
       lu=strlen(buff);
       // Reveiller les ecrivains qui attendent pour ecrire (s'ils existent)
       pthread_cond_broadcast(c->cond_ecrivain);
+      pthread_mutex_unlock(c->verrou_buff);
+
       return lu;
     }
   }
@@ -186,9 +228,13 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
 
 int conduct_write_eof(struct conduct *c){
   // mettre la variable eof à 1 (pour dire que la marque de fin de fichier est insérée)
+  pthread_mutex_lock(c->verrou_buff);
+
   c->eof=1;
   // Reveiller les lecteurs qui bloquent (buffer vide + pas de marque de fin de fichier)
   pthread_cond_broadcast(c->cond_lecteur);
+  pthread_mutex_unlock(c->verrou_buff);
+
   return 0;
 }
 
@@ -225,52 +271,71 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
         if(pthread_cond_broadcast(c->cond_lecteur)==-1){
           perror("Broadcast doesn't work");
           return -1;
-        };
+        }
         if(pthread_cond_wait(c->cond_ecrivain,c->verrou_buff)==-1){
           perror("Wait doesn't work");
           return -1;
-        };
+        }
 
         /*Les Lecteurs m'ont réveillé , il y a de la place dispo */
         /*Ecriture atomique*/
         if(count<=c->atomicity){
             while(count>c->capacity-strlen(c->buff)){
-                if(pthread_cond_wait(c->cond_ecrivain,c->verrou_buff)==-1){
-                  perror("Wait doesn't work");
-                  return -1;
-                };
+              pthread_cond_broadcast(c->cond_lecteur);
+              if(pthread_cond_wait(c->cond_ecrivain,c->verrou_buff)==-1){
+                perror("Wait doesn't work");
+                return -1;
               }
-              memcpy(c->buff+strlen(c->buff), buf, count);
-              octets_ecrits=(ssize_t) count;
-              return octets_ecrits;
             }
+            memcpy(c->buff+strlen(c->buff), buf, count);
+            octets_ecrits=(ssize_t) count;
+            pthread_cond_broadcast(c->cond_lecteur);
+            pthread_mutex_unlock(c->verrou_buff);
+            return octets_ecrits;
+          }
 
         /*Ecriture non atomique*/
           memcpy(c->buff+strlen(c->buff), buf,c->capacity-strlen(c->buff));
           octets_ecrits=(ssize_t)c->capacity-strlen(c->buff);
+          pthread_cond_broadcast(c->cond_lecteur);
+          pthread_mutex_unlock(c->verrou_buff);
           return octets_ecrits;
     }
 
     /*Il y a de la place */
 
     /*Ecriture atomique*/
-    printf("here\n");
+    printf("here ecriture atomique \n");
 
     if(count<=c->atomicity){
-      printf("here place ecriture\n");
+      printf("count %ld\n", count);
+      printf("capacity %ld\n", c->capacity);
+      printf("strlen buff %ld\n",strlen(c->buff));
+      printf("here place ecriture atomique %ld\n", c->capacity-strlen(c->buff));
       while(count>c->capacity-strlen(c->buff)){
+        printf("while non atomique\n");
+        pthread_cond_broadcast(c->cond_lecteur);
           if(pthread_cond_wait(c->cond_ecrivain,c->verrou_buff)==-1){
               perror("Wait doesn't work");
+              pthread_mutex_unlock(c->verrou_buff);
               return -1;
-            }
           }
-          memcpy(c->buff+strlen(c->buff), buf, count);
-          octets_ecrits=(ssize_t) count;
-          return octets_ecrits;
-        }
+      }
+      printf("apres while avant meme copie\n");
+      memcpy(c->buff+strlen(c->buff), buf, count);
+
+      octets_ecrits=(ssize_t) count;
+
+      pthread_cond_broadcast(c->cond_lecteur);
+
+      pthread_mutex_unlock(c->verrou_buff);
+      return octets_ecrits;
+    }
 
     /*Ecriture non atomique*/
-      memcpy(c->buff+strlen(c->buff), buf,c->capacity-strlen(c->buff));
-      octets_ecrits=(ssize_t)c->capacity-strlen(c->buff);
-      return octets_ecrits;
+    memcpy(c->buff+strlen(c->buff), buf,c->capacity-strlen(c->buff));
+    octets_ecrits=(ssize_t)c->capacity-strlen(c->buff);
+    pthread_cond_broadcast(c->cond_lecteur);
+    pthread_mutex_unlock(c->verrou_buff);
+    return octets_ecrits;
   }

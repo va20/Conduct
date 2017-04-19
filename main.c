@@ -5,7 +5,7 @@ int main(int argc, char const *argv[]) {
     cond1=conduct_create("saif", 20, 10);
     char tab[20]={'\0'};
     printf("taille tab %ld\n",strlen(tab));
-    ssize_t t=conduct_read(cond1, (char*)tab, 4);
+    ssize_t t=conduct_read(cond1, (char*)tab, 5);
     printf("lu %ld\n",t);
     conduct_close(cond1);
     return 0;
