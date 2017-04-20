@@ -8,5 +8,7 @@ int main(int argc, char const *argv[]) {
     ssize_t rep=conduct_write(cond1, tab, 12);
     printf("write 2 %ld\n",rep);
     conduct_destroy(cond1);
+    printf("write %ld\n",rep);
+    //conduct_destroy(cond1);
     return 0;
 }
