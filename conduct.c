@@ -15,7 +15,7 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
           perror("ftruncate failed");
           exit(2);
         }
-        conduit=mmap(NULL,sizeof(struct conduct),PROT_READ|PROT_WRITE,MAP_SHARED,fc1, 0);
+        conduit=mmap(NULL,sizeof(struct conduct)+c,PROT_READ|PROT_WRITE,MAP_SHARED,fc1, 0);
         if(conduit==MAP_FAILED){
             perror("Mapping failed");
             exit(1);
@@ -26,19 +26,16 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
         }
     }
     else{
-      conduit=mmap(NULL,sizeof(struct conduct),PROT_READ|PROT_WRITE,MAP_SHARED|MAP_ANONYMOUS,-1, 0);
+      conduit=mmap(NULL,sizeof(struct conduct)+c,PROT_READ|PROT_WRITE,MAP_SHARED|MAP_ANONYMOUS,-1, 0);
       if(conduit==MAP_FAILED){
         perror("Mapping failed");
         exit(1);
       }
-
     }
 
         conduit->capacity=c;
         conduit->atomicity=a;
-        conduit->buff[conduit->capacity];
-        memset(conduit->buff,0,sizeof(char)*conduit->capacity);
-
+        conduit->buff=(void*)conduit+sizeof(struct conduct);
 
 		    conduit->eof=0;
         conduit->curseur_ecriture=0;
@@ -52,7 +49,6 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
 
         return conduit;
     }
-
 
 
 
@@ -77,7 +73,6 @@ struct conduct * conduct_open(const char *name){
     exit(1);
   }
   return conduit;
-
 }
 
 ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
@@ -133,7 +128,6 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
       lu=c->taille_buff;
       c->taille_buff=0;
 
-      printf("j'ai lu %s\n",(char*)buff);
       if(buff==NULL){
         printf("Conduct reading failed\n");
         pthread_mutex_unlock(&c->verrou_buff);
@@ -191,7 +185,6 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
   pthread_mutex_lock(&c->verrou_buff);
   ssize_t octets_ecrits;
 
-
   if(c->eof==1){
     perror("Conduct has eof");
     pthread_mutex_unlock(&c->verrou_buff);
@@ -219,7 +212,7 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
           return -1;
         }
       }
-      memcpy(&c->buff+c->taille_buff, buf, count);
+      memcpy(c->buff+c->taille_buff, buf, count);
       if(c->taille_buff+count<=c->capacity){
         c->taille_buff+=count;
       }
