@@ -11,7 +11,7 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
             perror("Ouverture du fichier a echoue");
             exit(3);
         }
-        if(ftruncate(fc1,sizeof(struct conduct)+c)==-1){
+        if(ftruncate(fc1,(sizeof(struct conduct)+c))==-1){
           perror("ftruncate failed");
           exit(2);
         }
@@ -45,11 +45,15 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
     conduit->curseur_lecture=0;
     conduit->taille_buff=0;
     pthread_mutexattr_t attr;
+    pthread_condattr_t attr_cond;
+
     pthread_mutexattr_init(&attr);
+    pthread_condattr_init(&attr_cond);
+    pthread_condattr_setpshared(&attr_cond, PTHREAD_PROCESS_SHARED);
     pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
     pthread_mutex_init(&conduit->verrou_buff, &attr);
-    pthread_cond_init(&conduit->cond_ecrivain,NULL);
-	  pthread_cond_init(&conduit->cond_lecteur,NULL);
+    pthread_cond_init(&conduit->cond_ecrivain,&attr_cond);
+	  pthread_cond_init(&conduit->cond_lecteur,&attr_cond);
     return conduit;
   }
 
@@ -77,6 +81,7 @@ struct conduct * conduct_open(const char *name){
   }
   conduit=(struct conduct*)conduit;
   conduit->buff=(void*)conduit+sizeof(struct conduct);
+  printf("buffer open %s\n",conduit->buff);
   return conduit;
 }
 
@@ -104,6 +109,7 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
     if(count<=c->taille_buff){
     // 1) si le cursuer de la lecture n'est pas encore arriver à la fin du buffer
     //copier les octets demandes par le lecteur dans buff
+    printf("buffer %s\n",c->buff);
       if(memcpy(buff,c->buff+c->curseur_lecture,count)==NULL){
         printf("Read failed\n");
         return -1;
