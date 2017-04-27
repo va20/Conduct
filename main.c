@@ -6,7 +6,7 @@ int main(int argc, char const *argv[]) {
     char tab[20]={'\0'};
     //strcpy(tab,"salutation");
     printf("atom %s\n",cond1->buff);
-    printf("atom %ld\n",cond1->capacity);
+    printf("atom capacity%ld\n",cond1->capacity);
 
     ssize_t rep=conduct_read(cond1,(void*)tab, 8);
     printf("atom %s\n",cond1->buff);
