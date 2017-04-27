@@ -11,7 +11,7 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
             perror("Ouverture du fichier a echoue");
             exit(3);
         }
-        if(ftruncate(fc1,sizeof(struct conduct))==-1){
+        if(ftruncate(fc1,sizeof(struct conduct)+c)==-1){
           perror("ftruncate failed");
           exit(2);
         }
@@ -32,10 +32,10 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
         exit(1);
       }
     }
-
+        conduit=(struct conduct*)conduit;
+        conduit->buff=(void*)conduit+sizeof(struct conduct);
         conduit->capacity=c;
         conduit->atomicity=a;
-        conduit->buff=(void*)conduit+sizeof(struct conduct);
 
 		    conduit->eof=0;
         conduit->curseur_ecriture=0;
@@ -72,6 +72,8 @@ struct conduct * conduct_open(const char *name){
     perror("MMAP FAILED");
     exit(1);
   }
+  conduit=(struct conduct*)conduit;
+  conduit->buff=(void*)conduit+sizeof(struct conduct);
   return conduit;
 }
 
@@ -187,6 +189,7 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
 
   if(c->eof==1){
     perror("Conduct has eof");
+    errno=EPIPE;
     pthread_mutex_unlock(&c->verrou_buff);
     return -1;
   }
