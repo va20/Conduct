@@ -8,7 +8,7 @@ int main(int argc, char const *argv[]) {
     printf("atom %s\n",cond1->buff);
     printf("atom %ld\n",cond1->capacity);
 
-    ssize_t rep=conduct_read(cond1, tab, 8);
+    ssize_t rep=conduct_read(cond1,(void*)tab, 8);
     printf("atom %s\n",cond1->buff);
     printf("read 1 %ld\n",rep);
     conduct_destroy(cond1);
