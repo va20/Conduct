@@ -11,7 +11,8 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <string.h>
-#include "pthread.h"
+#include <stddef.h>
+#include <pthread.h>
 
 
 /*Structure Conduit */
@@ -23,13 +24,10 @@ struct conduct{
     pthread_mutex_t verrou_buff;
     pthread_cond_t cond_ecrivain;
     pthread_cond_t cond_lecteur;
-    int curseur_ecriture;
-    int curseur_lecture;
     size_t taille_buff;
     sem_t lecture;
     sem_t ecriture;
     char name[100];
-    void *buff;
 };
 
 struct conduct *conduct_create(const char *name, size_t a, size_t c);

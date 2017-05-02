@@ -11,7 +11,7 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
             perror("Ouverture du fichier a echoue");
             exit(3);
         }
-        if(ftruncate(fc1,(sizeof(struct conduct)+c))==-1){
+        if(ftruncate(fc1,sizeof(struct conduct)+c)==-1){
           perror("ftruncate failed");
           exit(2);
         }
@@ -32,17 +32,10 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
         exit(1);
       }
     }
-    conduit=(struct conduct*)conduit;
-    conduit->buff=(void*)conduit+sizeof(struct conduct);
-    if(memset(conduit->buff,0,sizeof(struct conduct)+c)==NULL){
-        printf("Error initialisation\n");
-
-    }
+    printf("size of struct %ld\n",sizeof(struct conduct));
     conduit->capacity=c;
     conduit->atomicity=a;
-		conduit->eof=0;
-    conduit->curseur_ecriture=0;
-    conduit->curseur_lecture=0;
+	  conduit->eof=0;
     conduit->taille_buff=0;
     pthread_mutexattr_t attr;
     pthread_condattr_t attr_cond;
@@ -54,6 +47,7 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
     pthread_mutex_init(&conduit->verrou_buff, &attr);
     pthread_cond_init(&conduit->cond_ecrivain,&attr_cond);
 	  pthread_cond_init(&conduit->cond_lecteur,&attr_cond);
+
     return conduit;
   }
 
@@ -79,9 +73,6 @@ struct conduct * conduct_open(const char *name){
     perror("MMAP FAILED");
     exit(1);
   }
-  conduit=(struct conduct*)conduit;
-  conduit->buff=(void*)conduit+sizeof(struct conduct);
-  printf("buffer open %s\n",conduit->buff);
   return conduit;
 }
 
@@ -109,14 +100,15 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
     if(count<=c->taille_buff){
     // 1) si le cursuer de la lecture n'est pas encore arriver à la fin du buffer
     //copier les octets demandes par le lecteur dans buff
-    printf("buffer %s\n",c->buff);
-      if(memcpy(buff,c->buff+c->curseur_lecture,count)==NULL){
+    //printf("buffer %s\n",c->buff);
+      if(memmove(buff,(void*)c+sizeof(struct conduct),count)==NULL){
         printf("Read failed\n");
         return -1;
       }
+      printf("dans read apres memmove %s\n",buff);
       // effacer les octets lus du buffer de conduit
-      memmove(c->buff+c->curseur_lecture, c->buff+count, c->taille_buff);
-
+      memmove((void*)c+sizeof(struct conduct),(void*)c+sizeof(struct conduct)+count, c->taille_buff);
+      printf("dans read apres memmove  buff conduit %s\n",(char*)c);
       c->taille_buff=c->taille_buff-count;
 
 
@@ -138,9 +130,10 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
     else if(count > c->taille_buff){
       // calculer le nombre d'octets restans dans le buffer du conduit
       // copier les octets lus dans le buffer du lecteur
-      memcpy(buff,c->buff+c->curseur_lecture,c->taille_buff);
-
-      memmove(c->buff+c->curseur_lecture, c->buff+c->taille_buff,c->taille_buff);
+      memmove(buff,(void*)c+sizeof(struct conduct),c->taille_buff);
+      printf("dans read apres memmove %s\n",buff);
+      memmove((void*)c+sizeof(struct conduct), (void*)c+sizeof(struct conduct)+c->taille_buff,c->taille_buff);
+      printf("dans read apres memmove buff conduit %s\n",(char*)c);
     //  printf("taille buffer conduit %ld\n",strlen(c->buff));
 
       lu=c->taille_buff;
@@ -236,7 +229,7 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
         return -1;
       }
     }
-      memcpy(c->buff+c->taille_buff, buf, count);
+      memmove((void*)c+sizeof(struct conduct)+c->taille_buff, buf, count);
       if(c->taille_buff+count<=c->capacity){
         c->taille_buff+=count;
       }
@@ -248,7 +241,7 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
     }
       //ajouter une condition pour tester si l'ecrivain souhaite ecrire d'une maniere atomique
       /*Ecriture non atomique*/
-    memcpy(c->buff+c->taille_buff, buf,c->capacity-c->taille_buff);
+    memmove((void*)c+sizeof(struct conduct)+c->taille_buff, buf,c->capacity-c->taille_buff);
     octets_ecrits=(ssize_t)c->capacity-c->taille_buff;
     c->taille_buff+=octets_ecrits;
     pthread_mutex_unlock(&c->verrou_buff);
