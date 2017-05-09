@@ -15,7 +15,7 @@ lecteur2: conduct.c lecteur2.c $(HEADER)
 ecrivain2: conduct.c ecrivain2.c $(HEADER)
 	$(CC) $(CFLAGS) -o $@ $^
 julia: conduct.c julia.c $(HEADER)
-	$(CC) -03 -ffsat-math $(FLAGS) `pkg-config --cflags gtk+-3.0` -o $@ $^ `pkg-config --libs gtk+-3.0` -lm
+	$(CC) -o3 -ffast-math $(FLAGS) `pkg-config --cflags gtk+-3.0` -o $@ $^ `	pkg-config --libs gtk+-3.0` -lm
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(CLIBS) -o $@ -c $<
