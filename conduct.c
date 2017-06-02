@@ -32,9 +32,10 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
         exit(1);
       }
     }
+    memset(conduit,0,sizeof(struct conduct)+c);
     conduit->capacity=c;
     conduit->atomicity=a;
-	   conduit->eof=0;
+	  conduit->eof=0;
     conduit->taille_buff=0;
     pthread_mutexattr_t attr;
     pthread_condattr_t attr_cond;
@@ -121,6 +122,8 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
       // copier les octets lus dans le buffer du lecteur
       memmove(buff,(void*)c+sizeof(struct conduct),c->taille_buff);
       memmove((void*)c+sizeof(struct conduct), (void*)c+sizeof(struct conduct)+c->taille_buff,c->taille_buff);
+	    printf("dans buff %s\n",(char*)c+sizeof(struct conduct));
+
 
       lu=c->taille_buff;
       c->taille_buff=0;
@@ -180,8 +183,8 @@ void conduct_destroy(struct conduct *c){
 /*Fonction d'écriture dans le conduit */
 ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
   pthread_mutex_lock(&c->verrou_buff);
-
-  ssize_t octets_ecrits;
+  int ms=0;
+  ssize_t octets_ecrits=0;
 
   if(c->eof==1){
     perror("Conduct has eof");
@@ -211,18 +214,29 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
       if(c->taille_buff+count<=c->capacity){
         c->taille_buff+=count;
       }
-
-      octets_ecrits=(ssize_t) count;
-      pthread_mutex_unlock(&c->verrou_buff);
-      pthread_cond_broadcast(&c->cond_ecrivain);
-      return octets_ecrits;
+	    ms=msync(c,sizeof(struct conduct)+c->capacity,MS_SYNC | MS_INVALIDATE);
+      if(ms<0){
+        perror("msync failed : ");
+      }
+      else if(ms==0){
+        octets_ecrits=(ssize_t) count;
+        pthread_mutex_unlock(&c->verrou_buff);
+        pthread_cond_broadcast(&c->cond_ecrivain);
+        return octets_ecrits;
+      }
     }
       //ajouter une condition pour tester si l'ecrivain souhaite ecrire d'une maniere atomique
       /*Ecriture non atomique*/
     memmove((void*)c+sizeof(struct conduct)+c->taille_buff, buf,c->capacity-c->taille_buff);
-    octets_ecrits=(ssize_t)c->capacity-c->taille_buff;
-    c->taille_buff+=octets_ecrits;
-    pthread_mutex_unlock(&c->verrou_buff);
-    pthread_cond_broadcast(&c->cond_ecrivain);
+    ms=msync(c,sizeof(struct conduct)+c->capacity,MS_SYNC | MS_INVALIDATE);
+    if(ms<0){
+      perror("msync failed : ");
+    }
+    else if(ms==0){
+      octets_ecrits=(ssize_t)c->capacity-c->taille_buff;
+      c->taille_buff+=octets_ecrits;
+      pthread_mutex_unlock(&c->verrou_buff);
+      pthread_cond_broadcast(&c->cond_ecrivain);
+    }
     return octets_ecrits;
   }

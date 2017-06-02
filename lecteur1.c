@@ -16,6 +16,7 @@ int main(int argc, char const *argv[]) {
     ssize_t rep=conduct_read(cond1,tab, 8);
     //printf("atom read %s\n",(char*)cond1-8);
     printf("tab read -> %s\n",tab);
+	printf("dans buff %s\n",(char*)cond1+sizeof(struct conduct));
     printf("read 1 %ld\n",rep);
     //conduct_destroy(cond1);
     conduct_close(cond1);
