@@ -13,6 +13,9 @@
 #include <string.h>
 #include <stddef.h>
 #include <pthread.h>
+#include <time.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 
 /*Structure Conduit */
@@ -27,7 +30,7 @@ struct conduct{
     size_t taille_buff;
     sem_t lecture;
     sem_t ecriture;
-    char name[100];
+    char name[256];
 };
 
 struct conduct *conduct_create(const char *name, size_t a, size_t c);

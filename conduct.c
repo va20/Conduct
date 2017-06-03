@@ -6,30 +6,30 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
     int fc1;
     if(name!=NULL){
         fc1=open(name,O_CREAT|O_RDWR,0666);
-
         if(fc1==-1){
-            perror("Ouverture du fichier a echoue");
+            perror("Ouverture du fichier a echoue : ");
             exit(3);
         }
         if(ftruncate(fc1,sizeof(struct conduct)+c)==-1){
-          perror("ftruncate failed");
+          perror("ftruncate failed : ");
           exit(2);
         }
         conduit=mmap(NULL,sizeof(struct conduct)+c,PROT_READ|PROT_WRITE,MAP_SHARED,fc1, 0);
         if(conduit==MAP_FAILED){
-            perror("Mapping failed");
-            exit(1);
+            perror("The memory mapping of create conduct failed : ");
+            return NULL;
         }
+        memset(conduit->name,0,256);
         if(strcpy(conduit->name, name)==NULL){
-          printf("Error copy name\n");
+          printf("Error copy name \n");
           exit(6);
         }
     }
     else{
       conduit=mmap(NULL,sizeof(struct conduct)+c,PROT_READ|PROT_WRITE,MAP_SHARED|MAP_ANONYMOUS,-1, 0);
       if(conduit==MAP_FAILED){
-        perror("Mapping failed");
-        exit(1);
+        perror("The memory mapping of create conduct failed : ");
+        return NULL;
       }
     }
     memset(conduit,0,sizeof(struct conduct)+c);
@@ -47,7 +47,6 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
     pthread_mutex_init(&conduit->verrou_buff, &attr);
     pthread_cond_init(&conduit->cond_ecrivain,&attr_cond);
 	  pthread_cond_init(&conduit->cond_lecteur,&attr_cond);
-
     return conduit;
   }
 
@@ -60,7 +59,7 @@ struct conduct * conduct_open(const char *name){
   struct stat file;
   int fc2=open(name,O_RDWR);
   if(fc2<0){
-    perror("File doesn't open");
+    perror("File doesn't open : ");
     exit(0);
   }
 
@@ -70,8 +69,8 @@ struct conduct * conduct_open(const char *name){
 
   conduit=mmap(NULL,file.st_size,PROT_READ|PROT_WRITE,MAP_SHARED,fc2,0);
   if(conduit==MAP_FAILED){
-    perror("MMAP FAILED");
-    exit(1);
+    perror("The memory mapping of open conduct failed : ");
+    return NULL;
   }
   return conduit;
 }
@@ -165,7 +164,7 @@ void conduct_close(struct conduct *c){
   //liberer la structure sans detruire le conduit
   int res=munmap(c,sizeof(struct conduct));
   if(res==-1){
-    perror("Deleting failed: ");
+    perror("Deleting failed : ");
     exit(3);
   }
 }

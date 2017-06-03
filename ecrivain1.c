@@ -5,13 +5,8 @@ int main(int argc, char const *argv[]) {
     cond1=conduct_open("saif2");
     char tab[20]={'\0'};
     strcpy(tab,"salutation");
-    printf("atom %s\n",tab);
-    printf("atom %ld\n",cond1->capacity);
-    //printf("buffer conduit avant write %s\n",cond1->buff);
-
     ssize_t rep=conduct_write(cond1, tab, 10);
-    printf("atom %s\n",(char*)cond1+sizeof(struct conduct));
-    printf("write 1 %ld\n",rep);
+    printf("ecrivain 1 %ld\n",rep);
     conduct_close(cond1);
     return 0;
 }
