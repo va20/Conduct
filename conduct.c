@@ -1,5 +1,18 @@
 #include "conduct.h"
 
+struct conduct{
+  size_t atomicity; // n > a :pas de garatie qu'on va ecrire n octets parce quéon a demandé plus de a
+                  // n <= a  : ecriture avec garantie que l'ecriture soit contigue
+  size_t capacity;// borne maximale du buff
+  int eof;
+  pthread_mutex_t verrou_buff;
+  pthread_cond_t cond_ecrivain;
+  pthread_cond_t cond_lecteur;
+  size_t taille_buff;
+  sem_t lecture;
+  sem_t ecriture;
+  char name[256];
+};
 
 struct conduct *conduct_create(const char *name,size_t a,size_t c){
     struct conduct* conduit=NULL;
@@ -19,7 +32,7 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
             perror("The memory mapping of create conduct failed : ");
             return NULL;
         }
-        memset(conduit->name,0,256);
+        memset(conduit,0,sizeof(struct conduct)+c);
         if(strcpy(conduit->name, name)==NULL){
           printf("Error copy name \n");
           exit(6);
@@ -31,8 +44,8 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
         perror("The memory mapping of create conduct failed : ");
         return NULL;
       }
+      memset(conduit,0,sizeof(struct conduct)+c);
     }
-    memset(conduit,0,sizeof(struct conduct)+c);
     conduit->capacity=c;
     conduit->atomicity=a;
 	  conduit->eof=0;
@@ -213,7 +226,7 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
       if(c->taille_buff+count<=c->capacity){
         c->taille_buff+=count;
       }
-	    ms=msync(c,sizeof(struct conduct)+c->capacity,MS_SYNC | MS_INVALIDATE);
+	  ms=msync(c,sizeof(struct conduct)+c->capacity,MS_SYNC | MS_INVALIDATE);
       if(ms<0){
         perror("msync failed : ");
       }

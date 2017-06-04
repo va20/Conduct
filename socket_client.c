@@ -1,9 +1,10 @@
-#include <conduct.h>
+#include "conduct.h"
 
 int main(int argc, char const *argv[]) {
+	clock_t start,end;
+	double time_used;
 	struct sockaddr_un address;
 	int fd_socket=socket(AF_UNIX,SOCK_STREAM,0);
-	char buff[500];
 	if(fd_socket<0){
 		perror("error socket");
 		exit(2);
@@ -18,13 +19,16 @@ int main(int argc, char const *argv[]) {
 		perror("erreur connect");
 		exit(3);
 	}
-	sleep(5);
-	read(0,buff,500);
-	int ecr=write(fd_socket,buff,sizeof(char)*strlen(buff));
-	memset(buff, 0,sizeof(char)*strlen(buff));
-	printf("ecrire %d\n",ecr);
-	sleep(5);
-
+	start=clock();
+	int ecr=write(fd_socket,TEXT,sizeof(char)*TAILLE_TEXT);
+	if(ecr<=0){
+		perror("Erreur ecriture socket");
+		exit(4);
+	}
+	end=clock();
+	time_used=((double)(end-start))/CLOCKS_PER_SEC;
+	printf("Temps utilisé pour ecrire dans la socket: %f\n",time_used);
+	printf("J'ai ecrit %d\n",ecr);
 	close(fd_socket);
 	return 0;
 }

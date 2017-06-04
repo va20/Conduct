@@ -1,7 +1,5 @@
 #include "conduct.h"
 
-void* print_func(void*);
-
 int main(int argc, char const *argv[]) {
     struct conduct *cond1;
     cond1=conduct_open("saif2");

@@ -7,6 +7,6 @@ int main(int argc, char const *argv[]) {
     ssize_t rep=conduct_read(cond1,tab, 8);
     printf("lecteur 1 : J'ai lu -> %s\n",tab);
     printf("Nombre d'octets lus lecteur 1 %ld\n",rep);
-    conduct_close(cond1);
+    conduct_destroy(cond1);
     return 0;
 }
