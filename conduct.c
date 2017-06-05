@@ -1,10 +1,10 @@
 #include "conduct.h"
 
 struct conduct{
-  size_t atomicity; // n > a :pas de garatie qu'on va ecrire n octets parce quéon a demandé plus de a
-                  // n <= a  : ecriture avec garantie que l'ecriture soit contigue
-  size_t capacity;// borne maximale du buff
+  size_t atomicity;
+  size_t capacity;
   int eof;
+  int ernum;
   pthread_mutex_t verrou_buff;
   pthread_cond_t cond_ecrivain;
   pthread_cond_t cond_lecteur;
@@ -21,11 +21,11 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
         fc1=open(name,O_CREAT|O_RDWR,0666);
         if(fc1==-1){
             perror("Ouverture du fichier a echoue : ");
-            exit(3);
+            return NULL;
         }
         if(ftruncate(fc1,sizeof(struct conduct)+c)==-1){
           perror("ftruncate failed : ");
-          exit(2);
+          return NULL;
         }
         conduit=mmap(NULL,sizeof(struct conduct)+c,PROT_READ|PROT_WRITE,MAP_SHARED,fc1, 0);
         if(conduit==MAP_FAILED){
@@ -35,7 +35,7 @@ struct conduct *conduct_create(const char *name,size_t a,size_t c){
         memset(conduit,0,sizeof(struct conduct)+c);
         if(strcpy(conduit->name, name)==NULL){
           printf("Error copy name \n");
-          exit(6);
+          return NULL;
         }
     }
     else{
@@ -73,23 +73,27 @@ struct conduct * conduct_open(const char *name){
   int fc2=open(name,O_RDWR);
   if(fc2<0){
     perror("File doesn't open : ");
-    exit(0);
+    exit(EXIT_FAILURE);
   }
 
   if(fstat(fc2,&file)==-1){
     perror("Problem with fstat");
+    exit(EXIT_FAILURE);
   }
 
   conduit=mmap(NULL,file.st_size,PROT_READ|PROT_WRITE,MAP_SHARED,fc2,0);
   if(conduit==MAP_FAILED){
     perror("The memory mapping of open conduct failed : ");
-    return NULL;
+    exit(EXIT_FAILURE);
   }
   return conduit;
 }
 
 ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
-  pthread_mutex_lock(&c->verrou_buff);
+  if(pthread_mutex_lock(&c->verrou_buff)!=0){
+    perror("Mutex doesn't work");
+    return -1;
+    }
 
   ssize_t lu;
 
@@ -99,6 +103,8 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
   while(c->taille_buff==0 && c->eof==0){
     // Bloquer jusqu'à ce que : le buffer ne soit plus vide ou une marque de fin de fichier soit y insérée
     pthread_cond_wait(&c->cond_ecrivain,&c->verrou_buff);
+
+
   }
   // si le buffer n'est pas vide
 
@@ -123,8 +129,14 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
       }
       lu=count;
       // reveiller les ecrivains pour qu'ils puissent ecrire (s'il y a des ecrivains qui attendent)
-      pthread_mutex_unlock(&c->verrou_buff);
-      pthread_cond_broadcast(&c->cond_lecteur);
+      if(pthread_mutex_unlock(&c->verrou_buff)!=0){
+        perror("Unlock doesn't work");
+        return -1;
+      };
+      if(pthread_cond_broadcast(&c->cond_lecteur)!=0){
+        perror("Broadcast doesn't work");
+        return -1;
+      };
 
       return lu;
     }// 2) si le curseur de la lecture va depasser la capacity(taille du buffer) -> faire 2 lectures
@@ -134,7 +146,6 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
       // copier les octets lus dans le buffer du lecteur
       memmove(buff,(void*)c+sizeof(struct conduct),c->taille_buff);
       memmove((void*)c+sizeof(struct conduct), (void*)c+sizeof(struct conduct)+c->taille_buff,c->taille_buff);
-	    printf("dans buff %s\n",(char*)c+sizeof(struct conduct));
 
 
       lu=c->taille_buff;
@@ -142,33 +153,57 @@ ssize_t conduct_read(struct conduct *c,void* buff,size_t count){
 
       if(buff==NULL){
         printf("Conduct reading failed\n");
-        pthread_mutex_unlock(&c->verrou_buff);
+        if(pthread_mutex_unlock(&c->verrou_buff)!=0){
+          perror("Unlock doesn't work");
+          return -1;
+        };
 
         return -1;
       }
       // Reveiller les ecrivains qui attendent pour ecrire (s'ils existent)
-      pthread_mutex_unlock(&c->verrou_buff);
-      pthread_cond_broadcast(&c->cond_lecteur);
+      if(pthread_mutex_unlock(&c->verrou_buff)!=0){
+        perror("Unlock doesn't work");
+        return -1;
+      };
+      if(pthread_cond_broadcast(&c->cond_lecteur)!=0){
+        perror("Broadcast doesn't work");
+        return -1;
+      };
 
       return lu;
     }
   }
   // Relacher le verrou
   //
-  pthread_mutex_unlock(&c->verrou_buff);
-  pthread_cond_broadcast(&c->cond_lecteur);
+  if(pthread_mutex_unlock(&c->verrou_buff)!=0){
+    perror("unlock doesn't work");
+    return -1;
+  };
+  if(pthread_cond_broadcast(&c->cond_lecteur)!=0){
+    perror("Wait doesn't work");
+    return -1;
+  }
   return 0;
 }
 
 
 int conduct_write_eof(struct conduct *c){
   // mettre la variable eof à 1 (pour dire que la marque de fin de fichier est insérée)
-  pthread_mutex_lock(&c->verrou_buff);
+  if(pthread_mutex_lock(&c->verrou_buff)!=0){
+    perror("Lock doesn't work");
+    return -1;
+  };
 
   c->eof=1;
   // Reveiller les lecteurs qui bloquent (buffer vide + pas de marque de fin de fichier)
-  pthread_mutex_unlock(&c->verrou_buff);
-  pthread_cond_broadcast(&c->cond_ecrivain);
+  if(pthread_mutex_unlock(&c->verrou_buff)!=0){
+    perror("Unlock doesn't work");
+    return -1;
+  };
+  if(pthread_cond_broadcast(&c->cond_ecrivain)!=0){
+    perror("Broadcast doesn't work");
+    return -1;
+  };
 
   return 0;
 }
@@ -178,7 +213,7 @@ void conduct_close(struct conduct *c){
   int res=munmap(c,sizeof(struct conduct));
   if(res==-1){
     perror("Deleting failed : ");
-    exit(3);
+    exit(EXIT_FAILURE);
   }
 }
 
@@ -188,25 +223,33 @@ void conduct_destroy(struct conduct *c){
   conduct_close(c);
   if(res==-1){
     perror("File deleting failed : ");
-    exit(4);
+    exit(EXIT_FAILURE);
   }
 }
 
 /*Fonction d'écriture dans le conduit */
 ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
-  pthread_mutex_lock(&c->verrou_buff);
+  if(pthread_mutex_lock(&c->verrou_buff)!=0){
+    perror("Lock doesn't work");
+    return -1;
+  };
   int ms=0;
   ssize_t octets_ecrits=0;
 
   if(c->eof==1){
-    perror("Conduct has eof");
     errno=EPIPE;
-    pthread_mutex_unlock(&c->verrou_buff);
+    perror("Conduct has eof");
+
+
+    if(pthread_mutex_unlock(&c->verrou_buff)!=0){
+      perror("Unlock doesn't work");
+      return -1;
+    };
     return -1;
   }
     /*Conduit plein*/
   if(c->taille_buff==c->capacity){
-    if(pthread_cond_wait(&c->cond_lecteur,&c->verrou_buff)==-1){
+    if(pthread_cond_wait(&c->cond_lecteur,&c->verrou_buff)!=0){
       perror("Wait doesn't work");
       return -1;
     }
@@ -216,7 +259,10 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
   if(count<=c->atomicity){
     while(count>c->capacity-c->taille_buff){
       //pthread_mutex_unlock(&c->verrou_buff);
-      pthread_cond_broadcast(&c->cond_ecrivain);
+      if(pthread_cond_broadcast(&c->cond_ecrivain)!=0){
+        perror("Broadcast doesn't work");
+        return -1;
+      };
       if(pthread_cond_wait(&c->cond_lecteur,&c->verrou_buff)==-1){
         perror("Wait doesn't work");
         return -1;
@@ -232,8 +278,14 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
       }
       else if(ms==0){
         octets_ecrits=(ssize_t) count;
-        pthread_mutex_unlock(&c->verrou_buff);
-        pthread_cond_broadcast(&c->cond_ecrivain);
+        if(pthread_mutex_unlock(&c->verrou_buff)!=0){
+          perror("Unlock doesn't work");
+          return -1;
+        };
+        if(pthread_cond_broadcast(&c->cond_ecrivain)!=0){
+          perror("Broadcast doesn't work");
+          return -1;
+        };
         return octets_ecrits;
       }
     }
@@ -247,8 +299,14 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
     else if(ms==0){
       octets_ecrits=(ssize_t)c->capacity-c->taille_buff;
       c->taille_buff+=octets_ecrits;
-      pthread_mutex_unlock(&c->verrou_buff);
-      pthread_cond_broadcast(&c->cond_ecrivain);
+      if(pthread_mutex_unlock(&c->verrou_buff)!=0){
+        perror("unlock doesn't work");
+        return -1;
+      };
+      if(pthread_cond_broadcast(&c->cond_ecrivain)!=0){
+        perror("Broadcast doesn't work");
+        return -1;
+      };
     }
     return octets_ecrits;
   }
