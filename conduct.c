@@ -9,8 +9,6 @@ struct conduct{
   pthread_cond_t cond_ecrivain;
   pthread_cond_t cond_lecteur;
   size_t taille_buff;
-  sem_t lecture;
-  sem_t ecriture;
   char name[256];
 };
 
@@ -226,29 +224,29 @@ ssize_t conduct_write(struct conduct *c, const void *buf, size_t count){
       if(c->taille_buff+count<=c->capacity){
         c->taille_buff+=count;
       }
-	  ms=msync(c,sizeof(struct conduct)+c->capacity,MS_SYNC | MS_INVALIDATE);
-      if(ms<0){
-        perror("msync failed : ");
-      }
-      else if(ms==0){
-        octets_ecrits=(ssize_t) count;
-        pthread_mutex_unlock(&c->verrou_buff);
-        pthread_cond_broadcast(&c->cond_ecrivain);
-        return octets_ecrits;
-      }
+      if(strlen(c->name)!=0){
+ 		     ms=msync(c,sizeof(struct conduct)+c->capacity,MS_SYNC | MS_INVALIDATE);
+ 	        if(ms<0){
+ 	           perror("msync failed : ");
+ 	        }
+ 	   }
+     octets_ecrits=(ssize_t) count;
+     pthread_mutex_unlock(&c->verrou_buff);
+     pthread_cond_broadcast(&c->cond_ecrivain);
+     return octets_ecrits;
     }
       //ajouter une condition pour tester si l'ecrivain souhaite ecrire d'une maniere atomique
       /*Ecriture non atomique*/
     memmove((void*)c+sizeof(struct conduct)+c->taille_buff, buf,c->capacity-c->taille_buff);
-    ms=msync(c,sizeof(struct conduct)+c->capacity,MS_SYNC | MS_INVALIDATE);
-    if(ms<0){
-      perror("msync failed : ");
-    }
-    else if(ms==0){
+	  /* if(strlen(c->name)!=0){
+		     ms=msync(c,sizeof(struct conduct)+c->capacity,MS_SYNC | MS_INVALIDATE);
+	        if(ms<0){
+	           perror("msync failed : ");
+	        }
+	   }*/
       octets_ecrits=(ssize_t)c->capacity-c->taille_buff;
       c->taille_buff+=octets_ecrits;
       pthread_mutex_unlock(&c->verrou_buff);
       pthread_cond_broadcast(&c->cond_ecrivain);
-    }
-    return octets_ecrits;
+      return octets_ecrits;
   }
